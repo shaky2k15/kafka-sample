@@ -1,5 +1,15 @@
 # kafka-sample
 
+# Foobar
+
+Simple REST API which can read a batch of messages from a topic related to a consumer group id. 
+
+
+
+
+## Usage
+
+```python
 
 
 Start server : (mac)
@@ -13,3 +23,5 @@ kafka-console-consumer --bootstrap-server localhost:9092 --topic <topic name> --
 
 Run the spring boot jar: (in dev)
 mvn spring-boot:run -Dspring.profiles.active=dev
+```
+
