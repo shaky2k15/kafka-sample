@@ -1,14 +1,25 @@
 package com.testing;
 
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
 import java.time.Duration;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Properties;
 
+import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
+import org.apache.kafka.clients.consumer.OffsetAndMetadata;
+import org.apache.kafka.clients.producer.ProducerConfig;
+import org.apache.kafka.common.PartitionInfo;
+import org.apache.kafka.common.TopicPartition;
+import org.apache.kafka.common.errors.WakeupException;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.springframework.beans.factory.annotation.Value;
@@ -24,6 +35,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
+
+
 
 @Api(value = "ApiController", description = "Kafka client")
 @RestController
@@ -127,5 +140,58 @@ public class ApiController {
 
 	}
 	
+	@ApiOperation(value = "Reset offset in a topic related to groupId ", response = ResponseEntity.class)
+	@GetMapping(value = "/consumers/{groupId}/{topicName}/reset-offset/{offsetId}")
+	@ResponseBody
+	public ResponseEntity<String> resetOffset(@PathVariable String groupId, @PathVariable String topicName,@PathVariable String offsetId) throws JsonProcessingException {
+
+		if (groupId == null && topicName == null && offsetId == null) {
+			return ResponseEntity.badRequest().body("Input parameters missing");
+		}
+		
+		ProcessBuilder processBuilder = new ProcessBuilder();
+		StringBuilder strBuilder = new StringBuilder("kafka-consumer-groups");
+		strBuilder.append(" --bootstrap-server ");
+		strBuilder.append(bootStrapServers);
+		strBuilder.append(" --group ");
+		strBuilder.append(groupId);
+		strBuilder.append(" --topic ");
+		strBuilder.append(topicName);
+		strBuilder.append(" --reset-offsets ");
+		strBuilder.append(" --to-offset ");
+		strBuilder.append(offsetId);
+		strBuilder.append(" --execute ");
+		processBuilder.command("bash","-c", strBuilder.toString());
+		logger.debug("command to be ran in bash {} ",strBuilder.toString());
+		StringBuilder responseOutput = null;
+		try {
+			Process process = processBuilder.start();
+			responseOutput = new StringBuilder();
+			BufferedReader rdr = new BufferedReader(new InputStreamReader(process.getInputStream()));
+			String commandOutput = null;
+			while((commandOutput = rdr.readLine()) != null) {
+				responseOutput.append(commandOutput);
+			}
+			
+			if(process.waitFor() == 0) {
+				logger.debug("Successfully ran the command {} ", strBuilder.toString());
+			} else {
+				logger.error("Command line processing error for the command {}", strBuilder.toString());
+			}
+			
+		} catch (Exception ex) {
+			logger.error("Error during reset offset activity");
+			logger.error(ex);
+		}
+		
+		return ResponseEntity.ok().body(responseOutput.toString());
+
+
+	}
+
+
+
+
+
 
 }
