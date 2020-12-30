@@ -10,7 +10,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
-
+import java.util.concurrent.ExecutionException;
+import org.apache.kafka.clients.admin.AdminClient;
+import org.apache.kafka.clients.admin.AdminClientConfig;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
@@ -19,6 +21,7 @@ import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.TopicPartition;
+import org.apache.kafka.common.errors.UnknownMemberIdException;
 import org.apache.kafka.common.errors.WakeupException;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -190,6 +193,49 @@ public class ApiController {
 	}
 
 
+
+	@ApiOperation(value = "Reset offset in a topic related to groupId using admin client", response = ResponseEntity.class)
+	@GetMapping(value = "/adminclient/consumers/{groupId}/partitions/{partitionId}/{topicName}/reset-offset/{offsetId}")
+	@ResponseBody
+	public ResponseEntity<String> resetOffsetUsingAdminClient(@PathVariable String groupId, @PathVariable String topicName, @PathVariable int partitionId, @PathVariable String offsetId) throws JsonProcessingException {
+
+        // initialize admin client
+        Properties props = new Properties();
+        props.put(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, bootStrapServers);
+        props.put(AdminClientConfig.REQUEST_TIMEOUT_MS_CONFIG, 1000);
+        props.put(AdminClientConfig.DEFAULT_API_TIMEOUT_MS_CONFIG, 1000);
+        AdminClient admin = AdminClient.create(props);
+        
+        
+        
+		if (groupId == null && topicName == null && offsetId == null) {
+			return ResponseEntity.badRequest().body("Input parameters missing");
+		}
+		
+        Map<TopicPartition, OffsetAndMetadata> resetOffsets = new HashMap<>();
+        TopicPartition partitionTobeCommitted = new TopicPartition(topicName,partitionId);
+        resetOffsets.put(partitionTobeCommitted, new OffsetAndMetadata(Integer.valueOf(offsetId)));
+	    String responseContent = "success";
+        try {
+            admin.alterConsumerGroupOffsets(groupId, resetOffsets).all().get();
+        } catch (ExecutionException e) {
+            logger.error("Failed to update the offsets committed by group  {}  with error {} " , groupId  , e.getMessage());
+            if (e.getCause() instanceof UnknownMemberIdException) {
+                logger.error("Check if consumer group is still active.");
+                }
+            responseContent = "failed";
+        } catch (Exception e) {
+        	logger.error(e);
+            responseContent = "failed";
+
+        }
+	
+		
+		return ResponseEntity.ok().body(responseContent);
+
+
+	}
+	
 
 
 
