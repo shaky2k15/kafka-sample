@@ -11,6 +11,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.CancellationException;
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.AdminClientConfig;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
@@ -18,7 +19,11 @@ import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
+import org.apache.kafka.clients.producer.KafkaProducer;
+import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.clients.producer.ProducerConfig;
+import org.apache.kafka.clients.producer.ProducerRecord;
+import org.apache.kafka.clients.producer.RecordMetadata;
 import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.errors.UnknownMemberIdException;
@@ -29,6 +34,8 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.RestController;
@@ -237,7 +244,43 @@ public class ApiController {
 	}
 	
 
+        
+	@ApiOperation(value = "Post records to a topic related to groupId ", response = ResponseEntity.class)
+	@PostMapping(value = "/producers/{topicName}")
+	@ResponseBody
+	public ResponseEntity<String> produce( @PathVariable String topicName, @RequestBody String requestBody) throws JsonProcessingException {
 
+		Properties props = new Properties();
+		props.put("bootstrap.servers", bootStrapServers);
+		props.put("acks", "all");
+        props.put("retries", 0);
+		props.put("key.serializer", "org.apache.kafka.common.serialization.StringSerializer");
+		props.put("value.serializer", "org.apache.kafka.common.serialization.StringSerializer");
+		Instant startProducer = Instant.now();
+		Producer<String, String> producer = new KafkaProducer<String, String>(props);
+		RecordMetadata data = null;
+		
+		try {
+			ProducerRecord<String, String> record = new ProducerRecord<String, String>(topicName,requestBody);
+			data = producer.send(record).get();
+            logger.debug("Sending a message to a topic  : {} ", topicName);
+
+		} catch (CancellationException ex) {
+			logger.error("CancellationException {}" ,ex);
+		} catch (ExecutionException ex) {
+			logger.error("ExecutionException {}" ,ex);
+		} catch (Exception ex) {
+			logger.error("Exception {}" ,ex);
+		} finally {
+			producer.close();
+		}
+		Instant stopProducer = Instant.now();
+		logger.debug("Time taken to send a message using producer in ms {} ",Duration.between(startProducer, stopProducer).toMillis());
+        
+		return ResponseEntity.ok(data.toString());
+
+
+	}
 
 
 }
