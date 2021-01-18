@@ -10,8 +10,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.CancellationException;
+import java.util.concurrent.ExecutionException;
+
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.AdminClientConfig;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
@@ -30,8 +31,10 @@ import org.apache.kafka.common.errors.UnknownMemberIdException;
 import org.apache.kafka.common.errors.WakeupException;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
+import org.springframework.kafka.support.SendResult;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -70,6 +73,9 @@ public class ApiController {
 
 	@Value("${enable.auto.commit}")
 	String enableAutoCommit;
+
+	@Autowired
+	Sender kafkaSender;
 
 	private static final Logger logger = LogManager.getLogger(ApiController.class);
 
@@ -282,5 +288,29 @@ public class ApiController {
 
 	}
 
+
+        @ApiOperation(value = "Post records to a topic related to groupId using kafkaTemplate ", response = ResponseEntity.class)
+	@PostMapping(value = "/kafkatemplate/producers/{topicName}")
+	@ResponseBody
+	public ResponseEntity<String> produceUsingKafkaTemplate( @PathVariable String topicName, @RequestBody String requestBody) throws JsonProcessingException {
+
+		Instant startProducer = Instant.now();
+		try {
+			 kafkaSender.sendMessage(topicName,requestBody);
+                         logger.debug("Sending a message to a topic  : {}  with content {} ", topicName , requestBody);
+
+		} catch (CancellationException ex) {
+			logger.error("CancellationException {}" ,ex);
+		} catch (ExecutionException ex) {
+			logger.error("ExecutionException {}" ,ex);
+		} catch (Exception ex) {
+			logger.error("Exception {}" ,ex);
+		} finally {
+		}
+		Instant stopProducer = Instant.now();
+		logger.debug("Time taken to send a message using producer in ms {} ",Duration.between(startProducer, stopProducer).toMillis());
+        
+		return ResponseEntity.ok().build();
+	}
 
 }
