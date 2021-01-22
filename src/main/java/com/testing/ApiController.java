@@ -5,6 +5,7 @@ import java.io.InputStreamReader;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -33,6 +34,10 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.kafka.support.SendResult;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -42,6 +47,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.client.RestTemplate;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -76,6 +82,9 @@ public class ApiController {
 
 	@Autowired
 	Sender kafkaSender;
+
+	@Autowired
+	RestTemplate restTemplate;
 
 	private static final Logger logger = LogManager.getLogger(ApiController.class);
 
@@ -311,6 +320,41 @@ public class ApiController {
 		logger.debug("Time taken to send a message using producer in ms {} ",Duration.between(startProducer, stopProducer).toMillis());
         
 		return ResponseEntity.ok().build();
+	}
+
+        @ApiOperation(value = "Post records to a topic related to groupId using kafka rest proxy interface ", response = ResponseEntity.class)
+	@PostMapping(value = "/restproxy/producers/{topicName}")
+	@ResponseBody
+	public ResponseEntity<String> produceUsingKafkaRestProxy(@PathVariable String topicName,
+			@RequestBody String requestBody) throws JsonProcessingException {
+
+		HttpHeaders headers = new HttpHeaders();
+		headers.setAccept(Arrays.asList(MediaType.APPLICATION_JSON));
+		HttpEntity<String> entity = new HttpEntity<String>(requestBody, headers);
+		Instant startProducer = Instant.now();
+		Object obj = null;
+		try {
+			// For testing purpose emulating the restproxy kafka instance using mocks
+			// Run the post response restproxy mock server using npm mock-json-server
+			// npx mock-json-server data.json
+			// data.json input :
+			// {"offsets":[{"partition":0,"offset":3,"error_code":null,"error":null}],"key_schema_id":null,"value_schema_id":null}
+			logger.debug("Sending a message to a topic  : {}  with content {} ", topicName, requestBody);
+
+			//replace the mock with actual restproxy url
+			obj = restTemplate.exchange("http://127.0.0.1:8000/topics/testme", HttpMethod.POST, entity, String.class)
+					.getBody();
+			logger.debug("Received response  : {} ", obj.toString());
+
+		} catch (Exception ex) {
+			logger.error("Exception :", ex);
+		} finally {
+		}
+		Instant stopProducer = Instant.now();
+		logger.debug("Time taken to send a message using producer in ms {} ",
+				Duration.between(startProducer, stopProducer).toMillis());
+
+		return ResponseEntity.ok(obj.toString());
 	}
 
 }
