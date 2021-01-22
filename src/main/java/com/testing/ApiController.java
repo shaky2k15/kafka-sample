@@ -281,11 +281,11 @@ public class ApiController {
             logger.debug("Sending a message to a topic  : {} ", topicName);
 
 		} catch (CancellationException ex) {
-			logger.error("CancellationException {}" ,ex);
+			logger.error("CancellationException" ,ex);
 		} catch (ExecutionException ex) {
-			logger.error("ExecutionException {}" ,ex);
+			logger.error("ExecutionException" ,ex);
 		} catch (Exception ex) {
-			logger.error("Exception {}" ,ex);
+			logger.error("Exception" ,ex);
 		} finally {
 			producer.close();
 		}
@@ -309,11 +309,11 @@ public class ApiController {
                          logger.debug("Sending a message to a topic  : {}  with content {} ", topicName , requestBody);
 
 		} catch (CancellationException ex) {
-			logger.error("CancellationException {}" ,ex);
+			logger.error("CancellationException" ,ex);
 		} catch (ExecutionException ex) {
-			logger.error("ExecutionException {}" ,ex);
+			logger.error("ExecutionException" ,ex);
 		} catch (Exception ex) {
-			logger.error("Exception {}" ,ex);
+			logger.error("Exception" ,ex);
 		} finally {
 		}
 		Instant stopProducer = Instant.now();
