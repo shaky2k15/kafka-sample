@@ -329,7 +329,7 @@ public class ApiController {
 			@RequestBody String requestBody) throws JsonProcessingException {
 
 		HttpHeaders headers = new HttpHeaders();
-		headers.setAccept(Arrays.asList(MediaType.APPLICATION_JSON));
+		headers.add("Content-type","application/vnd.kafka.json.v2+json");
 		HttpEntity<String> entity = new HttpEntity<String>(requestBody, headers);
 		Instant startProducer = Instant.now();
 		Object obj = null;
@@ -348,6 +348,8 @@ public class ApiController {
 
 		} catch (Exception ex) {
 			logger.error("Exception :", ex);
+			throw new SystemException();
+
 		} finally {
 		}
 		Instant stopProducer = Instant.now();
