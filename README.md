@@ -1,6 +1,5 @@
 # kafka-sample
 
-# Foobar
 
 Simple REST API which can read a batch of messages from a topic related to a consumer group id. 
 
